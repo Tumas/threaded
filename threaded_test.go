@@ -7,14 +7,14 @@ import (
 )
 
 func readFixtureData(t *testing.T) (*rss.Feed, []byte, chan *FeedResultBundle) {
-	content, err := ioutil.ReadFile("fixtures/syndication.php")
+	content, err := ioutil.ReadFile("fixtures/syndication")
 	if err != nil {
 		t.Error("Unable to load fixture data")
 	}
 
 	feedItem := &FeedConfigItem{
 		guid: "geras_dviratis",
-		url:  "http://www.gerasdviratis.lt/forum/syndication.php",
+		url:  "test",
 		identifier: &FeedIdentifier{
 			paramName: "t",
 			paramType: "parameter",
