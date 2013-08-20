@@ -1,10 +1,13 @@
 package main
 
 import (
+	"code.google.com/p/go.net/websocket"
 	"fmt"
 	rss "github.com/jteeuwen/go-pkg-rss"
+	"net/http"
 	"net/url"
 	"os"
+	"text/template"
 	"time"
 )
 
@@ -22,6 +25,12 @@ type FeedConfigItem struct {
 type FeedResultBundle struct {
 	feed  *FeedConfigItem
 	items map[string][]*rss.Item
+}
+
+type hub struct {
+	connections map[*websocket.Conn]bool
+	register    chan *websocket.Conn
+	unregister  chan *websocket.Conn
 }
 
 func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedConfigItem, timeout int) func(*rss.Feed, *rss.Channel, []*rss.Item) {
@@ -64,7 +73,6 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 			}
 		}
 
-		// fmt.Printf("LEN IS %d", len(results))
 		if len(results) != 0 {
 			mainChannel <- &FeedResultBundle{
 				feed:  feedConfigItem,
@@ -78,22 +86,11 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 	}
 }
 
-func main() {
-	sources := []*FeedConfigItem{
-		&FeedConfigItem{
-			guid: "geras_dviratis",
-			url:  "http://www.gerasdviratis.lt/forum/syndication.php",
-			identifier: &FeedIdentifier{
-				paramName: "t",
-				paramType: "parameter",
-			},
-		},
-	}
-
+func (h *hub) run(sources *[]*FeedConfigItem) {
 	feedChannel := make(chan *FeedResultBundle)
 	timeout := 5
 
-	for _, feedItem := range sources {
+	for _, feedItem := range *sources {
 		itemHandler := spawnItemHandler(feedChannel, feedItem, timeout)
 		feed := rss.New(timeout, true, nil, itemHandler)
 
@@ -111,8 +108,57 @@ func main() {
 
 	for {
 		select {
+		case connection := <-h.register:
+			h.connections[connection] = true
+		case connection := <-h.unregister:
+			delete(h.connections, connection)
 		case feedResults := <-feedChannel:
-			fmt.Printf("%d", feedResults)
+			for connection := range h.connections {
+				err := websocket.JSON.Send(connection, feedResults.items)
+				if err != nil {
+					delete(h.connections, connection)
+					go connection.Close()
+				}
+			}
 		}
+	}
+}
+
+var homeTemplate = template.Must(template.ParseFiles("home.html"))
+
+func homeHandler(c http.ResponseWriter, req *http.Request) {
+	homeTemplate.Execute(c, req.Host)
+}
+
+func main() {
+	sources := []*FeedConfigItem{
+		&FeedConfigItem{
+			guid: "geras_dviratis",
+			url:  "http://www.gerasdviratis.lt/forum/syndication.php",
+			identifier: &FeedIdentifier{
+				paramName: "t",
+				paramType: "parameter",
+			},
+		},
+	}
+
+	hub := hub{
+		connections: make(map[*websocket.Conn]bool),
+		register:    make(chan *websocket.Conn),
+		unregister:  make(chan *websocket.Conn),
+	}
+
+	wsHandler := func(ws *websocket.Conn) {
+		hub.register <- ws
+		// defer func() { hub.unregister <- ws }()
+		select {}
+	}
+
+	go hub.run(&sources)
+
+	http.HandleFunc("/", homeHandler)
+	http.Handle("/ws", websocket.Handler(wsHandler))
+	if err := http.ListenAndServe(":8080", nil); err != nil {
+		fmt.Printf("ListenAndServe: %s", err)
 	}
 }
