@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	// "github.com/emicklei/hopwatch"
 	rss "github.com/jteeuwen/go-pkg-rss"
 	"net/url"
 	"os"
@@ -57,7 +56,7 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 
 				if _, ok := previous[item.Guid]; !ok {
 					if array, ok := results[branch]; ok {
-						array = append(array, item)
+						results[branch] = append(array, item)
 					} else {
 						results[branch] = []*rss.Item{item}
 					}
@@ -65,7 +64,7 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 			}
 		}
 
-		fmt.Printf("LEN IS %d", len(results))
+		// fmt.Printf("LEN IS %d", len(results))
 		if len(results) != 0 {
 			mainChannel <- &FeedResultBundle{
 				feed:  feedConfigItem,

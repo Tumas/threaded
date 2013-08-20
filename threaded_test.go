@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func readFixtureData(t *testing.T) (*rss.Feed, []byte, chan *FeedResultBundle) {
-	content, err := ioutil.ReadFile("fixtures/syndication")
+func readFixtureData(t *testing.T, path string) (*rss.Feed, []byte, chan *FeedResultBundle) {
+	content, err := ioutil.ReadFile(path)
 	if err != nil {
 		t.Error("Unable to load fixture data")
 	}
@@ -29,7 +29,7 @@ func readFixtureData(t *testing.T) (*rss.Feed, []byte, chan *FeedResultBundle) {
 }
 
 func TestFetchingItems(t *testing.T) {
-	feed, content, ch := readFixtureData(t)
+	feed, content, ch := readFixtureData(t, "fixtures/syndication")
 	go feed.FetchBytes("http://example.com", content, nil)
 	results := <-ch
 
@@ -39,7 +39,7 @@ func TestFetchingItems(t *testing.T) {
 }
 
 func TestFetchingSameResults(t *testing.T) {
-	feed, content, ch := readFixtureData(t)
+	feed, content, ch := readFixtureData(t, "fixtures/syndication")
 	go feed.FetchBytes("http://example.com", content, nil)
 	go feed.FetchBytes("http://example.com", content, nil)
 
@@ -48,5 +48,38 @@ func TestFetchingSameResults(t *testing.T) {
 	case <-ch:
 		t.Error("Should not receive items if nothing has changed")
 	default:
+	}
+}
+
+func TestThreadIDCollecting(t *testing.T) {
+	feed, content, ch := readFixtureData(t, "fixtures/syndication")
+	go feed.FetchBytes("http://example.com", content, nil)
+	results := <-ch
+
+	correct_keys := []string{"47649", "2968", "47531", "47524", "47677", "47613", "47325", "46951", "47669"}
+	for _, k := range correct_keys {
+		if _, ok := results.items[k]; !ok {
+			t.Error("Should have collected correct keys - missing: %s", k)
+		}
+	}
+}
+
+func TestThreadNestingKeyLength(t *testing.T) {
+	feed, content, ch := readFixtureData(t, "fixtures/syndication_nested")
+	go feed.FetchBytes("http://example.com", content, nil)
+	results := <-ch
+
+	if len(results.items) != 8 {
+		t.Error("should have fetched 8 items")
+	}
+}
+
+func TestThreadNesting(t *testing.T) {
+	feed, content, ch := readFixtureData(t, "fixtures/syndication_nested")
+	go feed.FetchBytes("http://example.com", content, nil)
+	results := <-ch
+
+	if len(results.items["47677"]) != 3 {
+		t.Error("should have combined nested news under one thread")
 	}
 }
