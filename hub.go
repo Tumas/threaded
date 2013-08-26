@@ -23,9 +23,9 @@ type FeedConfigItem struct {
 }
 
 type FeedResult struct {
-	Title         string
-	LastUpdatedAt string
-	MessageCount  int
+	Title         string `json:"title"`
+	LastUpdatedAt string `json:"last_updated_at"`
+	MessageCount  int    `json:"message_count"`
 }
 
 type FeedResultBundle struct {
@@ -71,7 +71,7 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 
 				if _, ok := previous[item.Guid]; !ok {
 					if resultRecord, ok := results[branch]; ok {
-						resultRecord.LastUpdatedAt = item.PubDate //append(array, item)
+						resultRecord.LastUpdatedAt = item.PubDate
 						resultRecord.MessageCount += 1
 					} else {
 						results[branch] = &FeedResult{
@@ -91,7 +91,6 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 			}
 
 			mainChannel <- &resultBundle
-			// go persistResults(&resultBundle)
 		}
 
 		previous = current
