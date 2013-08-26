@@ -1,4 +1,4 @@
-package main
+package threaded
 
 import (
 	rss "github.com/jteeuwen/go-pkg-rss"
@@ -13,11 +13,11 @@ func readFixtureData(t *testing.T, path string) (*rss.Feed, []byte, chan *FeedRe
 	}
 
 	feedItem := &FeedConfigItem{
-		guid: "geras_dviratis",
-		url:  "test",
-		identifier: &FeedIdentifier{
-			paramName: "t",
-			paramType: "parameter",
+		Guid: "geras_dviratis",
+		Url:  "test",
+		Identifier: &FeedIdentifier{
+			ParamName: "t",
+			ParamType: "parameter",
 		},
 	}
 
@@ -33,7 +33,7 @@ func TestFetchingItems(t *testing.T) {
 	go feed.FetchBytes("http://example.com", content, nil)
 	results := <-ch
 
-	if len(results.items) != 9 {
+	if len(results.Items) != 9 {
 		t.Error("should have fetched 9 items")
 	}
 }
@@ -58,7 +58,7 @@ func TestThreadIDCollecting(t *testing.T) {
 
 	correct_keys := []string{"47649", "2968", "47531", "47524", "47677", "47613", "47325", "46951", "47669"}
 	for _, k := range correct_keys {
-		if _, ok := results.items[k]; !ok {
+		if _, ok := results.Items[k]; !ok {
 			t.Error("Should have collected correct keys - missing: %s", k)
 		}
 	}
@@ -69,7 +69,7 @@ func TestThreadNestingKeyLength(t *testing.T) {
 	go feed.FetchBytes("http://example.com", content, nil)
 	results := <-ch
 
-	if len(results.items) != 8 {
+	if len(results.Items) != 8 {
 		t.Error("should have fetched 8 items")
 	}
 }
@@ -79,7 +79,7 @@ func TestThreadNesting(t *testing.T) {
 	go feed.FetchBytes("http://example.com", content, nil)
 	results := <-ch
 
-	if len(results.items["47677"]) != 3 {
+	if results.Items["47677"].MessageCount != 3 {
 		t.Error("should have combined nested news under one thread")
 	}
 }
