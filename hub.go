@@ -48,7 +48,7 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 		ident := feedConfigItem.Identifier
 
 		for _, item := range newitems {
-			u, err := url.Parse(item.Guid)
+			u, err := url.Parse(*item.Guid)
 			if err != nil {
 				fmt.Printf("Error when parsing guid: %s\n", item.Guid)
 				continue
@@ -67,9 +67,9 @@ func spawnItemHandler(mainChannel chan *FeedResultBundle, feedConfigItem *FeedCo
 				//  continue
 				// }
 
-				current[item.Guid] = true
+				current[*item.Guid] = true
 
-				if _, ok := previous[item.Guid]; !ok {
+				if _, ok := previous[*item.Guid]; !ok {
 					if resultRecord, ok := results[branch]; ok {
 						resultRecord.LastUpdatedAt = item.PubDate
 						resultRecord.MessageCount += 1
